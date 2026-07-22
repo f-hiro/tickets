@@ -1,0 +1,258 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="チケット管理">
+<title>チケット管理</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Hiragino Sans', sans-serif; background: #f5f5f7; color: #1c1c1e; font-size: 15px; }
+  header { background: #fff; border-bottom: 0.5px solid #ddd; padding: 12px 16px; display: flex; align-items: center; justify-content: space-between; }
+  header h1 { font-size: 17px; font-weight: 600; }
+  .nav-btns { display: flex; gap: 6px; }
+  .nav-btn { font-size: 12px; padding: 5px 10px; background: #e5e5ea; border: none; border-radius: 8px; cursor: pointer; color: #1c1c1e; font-weight: 500; }
+  .panel { display: none; background: #fff; border-bottom: 0.5px solid #ddd; padding: 16px; }
+  .panel.open { display: block; }
+  .panel h2 { font-size: 16px; font-weight: 600; margin-bottom: 14px; }
+  .field { margin-bottom: 12px; }
+  .field label { font-size: 12px; color: #8e8e93; display: block; margin-bottom: 4px; }
+  .field input { width: 100%; background: #f5f5f7; border: 0.5px solid #ddd; border-radius: 10px; padding: 10px 12px; font-size: 16px; outline: none; }
+  .field input:focus { border-color: #007aff; background: #fff; }
+  .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .btn-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 14px; }
+  .btn-cancel { background: #e5e5ea; color: #1c1c1e; padding: 12px; border-radius: 12px; font-size: 15px; border: none; cursor: pointer; font-weight: 500; }
+  .btn-save { background: #007aff; color: #fff; padding: 12px; border-radius: 12px; font-size: 15px; border: none; cursor: pointer; font-weight: 600; }
+  .btn-full { width: 100%; padding: 12px; border-radius: 12px; font-size: 15px; border: none; cursor: pointer; font-weight: 500; margin-top: 8px; }
+  .summary { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; padding: 12px 16px; }
+  .card { background: #fff; border-radius: 12px; padding: 12px 14px; }
+  .card-label { font-size: 11px; color: #8e8e93; margin-bottom: 4px; }
+  .card-val { font-size: 20px; font-weight: 600; }
+  .card-val.warn { color: #ff9500; }
+  .add-btn { display: block; width: calc(100% - 32px); margin: 0 16px 12px; padding: 14px; background: #007aff; color: #fff; border: none; border-radius: 12px; font-size: 16px; font-weight: 600; cursor: pointer; }
+  .list { padding: 0 16px 40px; }
+  .entry { background: #fff; border-radius: 12px; padding: 14px; margin-bottom: 10px; }
+  .entry-name { font-size: 16px; font-weight: 600; margin-bottom: 8px; }
+  .entry-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-bottom: 8px; }
+  .entry-item { background: #f5f5f7; border-radius: 8px; padding: 6px 8px; }
+  .entry-item-label { font-size: 10px; color: #8e8e93; margin-bottom: 2px; }
+  .entry-item-val { font-size: 15px; font-weight: 500; }
+  .entry-footer { display: flex; align-items: center; justify-content: space-between; margin-top: 10px; }
+  .badge { font-size: 12px; padding: 3px 10px; border-radius: 20px; font-weight: 500; }
+  .badge-paid { background: #d1fae5; color: #065f46; }
+  .badge-unpaid { background: #fff3cd; color: #92400e; }
+  .entry-actions { display: flex; gap: 8px; }
+  .btn-edit { background: #e5e5ea; color: #1c1c1e; border: none; border-radius: 8px; padding: 6px 14px; font-size: 13px; cursor: pointer; font-weight: 500; }
+  .btn-del { background: #ffe5e5; color: #c0392b; border: none; border-radius: 8px; padding: 6px 14px; font-size: 13px; cursor: pointer; font-weight: 500; }
+  .entry-amount { font-size: 13px; color: #8e8e93; margin-top: 2px; }
+  .empty { text-align: center; padding: 60px 20px; color: #8e8e93; }
+  textarea { width: 100%; border-radius: 10px; border: 0.5px solid #ddd; padding: 10px; font-size: 13px; font-family: monospace; resize: none; background: #f5f5f7; }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>🎵 チケット管理</h1>
+  <div class="nav-btns">
+    <button class="nav-btn" onclick="togglePanel('panel-transfer')">データ転送</button>
+  </div>
+</header>
+
+<div class="panel" id="panel-form">
+  <h2 id="form-title">新規登録</h2>
+  <div class="field"><label>名前</label><input type="text" id="f-name" placeholder="例: 田中" autocomplete="off"></div>
+  <div class="two-col">
+    <div class="field"><label>一般配布枚数</label><input type="number" id="f-general" min="0" value="0" inputmode="numeric" oninput="updateCalc()"></div>
+    <div class="field"><label>一般実販売枚数</label><input type="number" id="f-general-sold" min="0" value="0" inputmode="numeric"></div>
+  </div>
+  <div class="two-col">
+    <div class="field"><label>協賛配布枚数</label><input type="number" id="f-sponsor" min="0" value="0" inputmode="numeric"></div>
+    <div class="field"><label>協賛実販売枚数</label><input type="number" id="f-sponsor-sold" min="0" value="0" inputmode="numeric"></div>
+  </div>
+  <div class="field"><label>チケット代（自動計算）</label><input type="text" id="f-amount-display" readonly style="color:#8e8e93"></div>
+  <div class="field"><label>入金日</label><input type="date" id="f-date"></div>
+  <div class="field"><label>備考</label><input type="text" id="f-note" placeholder="任意"></div>
+  <div class="btn-row">
+    <button class="btn-cancel" onclick="closeForm()">キャンセル</button>
+    <button class="btn-save" onclick="saveEntry()">保存</button>
+  </div>
+</div>
+
+<div class="panel" id="panel-transfer">
+  <h2>データ転送</h2>
+  <p style="font-size:13px;color:#8e8e93;margin-bottom:10px">【スマホ→PC】下のテキストをコピーしてメールで自分に送る</p>
+  <textarea id="io-text" rows="4" readonly></textarea>
+  <button class="btn-full" style="background:#007aff;color:#fff" onclick="copyData()">コピーする</button>
+  <hr style="margin:16px 0;border:none;border-top:0.5px solid #ddd">
+  <p style="font-size:13px;color:#8e8e93;margin-bottom:10px">【PCからの取込】メールで受け取ったテキストを貼り付けて取り込む</p>
+  <textarea id="io-import-text" rows="4" placeholder="ここに貼り付け"></textarea>
+  <button class="btn-full" style="background:#34c759;color:#fff" onclick="importData()">取り込む</button>
+  <button class="btn-full" style="background:#e5e5ea;color:#1c1c1e" onclick="togglePanel('panel-transfer')">閉じる</button>
+</div>
+
+<div class="summary">
+  <div class="card"><div class="card-label">一般配布合計</div><div class="card-val" id="s-general">0枚</div></div>
+  <div class="card"><div class="card-label">一般実販売合計</div><div class="card-val" id="s-general-sold">0枚</div></div>
+  <div class="card"><div class="card-label">協賛配布合計</div><div class="card-val" id="s-sponsor">0枚</div></div>
+  <div class="card"><div class="card-label">協賛実販売合計</div><div class="card-val" id="s-sponsor-sold">0枚</div></div>
+  <div class="card"><div class="card-label">売上合計</div><div class="card-val" id="s-rev">0円</div></div>
+  <div class="card"><div class="card-label">入金済み</div><div class="card-val" id="s-paid">0円</div></div>
+  <div class="card"><div class="card-label">未入金</div><div class="card-val warn" id="s-unpaid">0件</div></div>
+</div>
+
+<button class="add-btn" onclick="openForm()">＋ メンバーを追加</button>
+
+<div class="list" id="list"></div>
+
+<script>
+let data = JSON.parse(localStorage.getItem('ct_v1') || '[]');
+let editId = null;
+
+function save(){ localStorage.setItem('ct_v1', JSON.stringify(data)); }
+
+function togglePanel(id){
+  const p = document.getElementById(id);
+  const isOpen = p.classList.contains('open');
+  document.querySelectorAll('.panel').forEach(el => el.classList.remove('open'));
+  if(!isOpen){
+    if(id === 'panel-transfer'){
+      document.getElementById('io-text').value = JSON.stringify(data);
+    }
+    p.classList.add('open');
+    p.scrollIntoView({behavior:'smooth'});
+  }
+}
+
+function openForm(idx){
+  editId = idx !== undefined ? idx : null;
+  document.getElementById('form-title').textContent = editId !== null ? '編集' : '新規登録';
+  const r = editId !== null ? data[editId] : {name:'',general:0,generalSold:0,sponsor:0,sponsorSold:0,date:'',note:''};
+  document.getElementById('f-name').value = r.name||'';
+  document.getElementById('f-general').value = r.general||0;
+  document.getElementById('f-general-sold').value = r.generalSold||0;
+  document.getElementById('f-sponsor').value = r.sponsor||0;
+  document.getElementById('f-sponsor-sold').value = r.sponsorSold||0;
+  document.getElementById('f-amount-display').value = (Number(r.general||0)*2000).toLocaleString()+'円';
+  document.getElementById('f-date').value = r.date||'';
+  document.getElementById('f-note').value = r.note||'';
+  document.querySelectorAll('.panel').forEach(el => el.classList.remove('open'));
+  document.getElementById('panel-form').classList.add('open');
+  document.getElementById('panel-form').scrollIntoView({behavior:'smooth'});
+}
+
+function closeForm(){
+  document.getElementById('panel-form').classList.remove('open');
+  editId = null;
+}
+
+function updateCalc(){
+  const g = Number(document.getElementById('f-general').value)||0;
+  document.getElementById('f-amount-display').value = (g*2000).toLocaleString()+'円';
+}
+
+function saveEntry(){
+  const name = document.getElementById('f-name').value.trim();
+  if(!name){ alert('名前を入力してください'); return; }
+  const entry = {
+    name,
+    general: Number(document.getElementById('f-general').value)||0,
+    generalSold: Number(document.getElementById('f-general-sold').value)||0,
+    sponsor: Number(document.getElementById('f-sponsor').value)||0,
+    sponsorSold: Number(document.getElementById('f-sponsor-sold').value)||0,
+    date: document.getElementById('f-date').value,
+    note: document.getElementById('f-note').value.trim()
+  };
+  if(editId !== null) data[editId] = entry;
+  else data.push(entry);
+  save(); render(); closeForm();
+  document.getElementById('list').scrollIntoView({behavior:'smooth'});
+}
+
+function del(i){
+  if(!confirm(data[i].name + ' を削除しますか？')) return;
+  data.splice(i,1); save(); render();
+}
+
+function copyData(){
+  const t = document.getElementById('io-text');
+  t.focus();
+  t.setSelectionRange(0, t.value.length);
+  try{
+    document.execCommand('copy');
+    alert('コピーしました！メールに貼り付けて自分に送ってください。');
+  } catch(e){
+    alert('テキストを長押しして「全選択」→「コピー」してください。');
+  }
+}
+
+function importData(){
+  try{
+    const raw = document.getElementById('io-import-text').value.trim();
+    if(!raw){ alert('テキストを貼り付けてください'); return; }
+    const parsed = JSON.parse(raw);
+    if(!Array.isArray(parsed)) throw new Error();
+    data = parsed;
+    save(); render();
+    document.getElementById('io-import-text').value = '';
+    togglePanel('panel-transfer');
+    alert('取り込み完了しました！');
+  } catch(e){
+    alert('データが正しくありません。もう一度コピーし直してください。');
+  }
+}
+
+function esc(s){ const d=document.createElement('div'); d.textContent=s; return d.innerHTML; }
+
+function render(){
+  const list = document.getElementById('list');
+  list.innerHTML = '';
+  if(data.length === 0){
+    list.innerHTML = '<div class="empty">まだデータがありません<br>上のボタンから追加してください</div>';
+  }
+  data.forEach((r, i) => {
+    const paid = r.date
+      ? `<span class="badge badge-paid">✓ ${r.date}</span>`
+      : `<span class="badge badge-unpaid">未入金</span>`;
+    const div = document.createElement('div');
+    div.className = 'entry';
+    div.innerHTML = `
+      <div class="entry-name">${esc(r.name)}</div>
+      <div class="entry-grid">
+        <div class="entry-item"><div class="entry-item-label">一般配布</div><div class="entry-item-val">${r.general}枚</div></div>
+        <div class="entry-item"><div class="entry-item-label">一般実販売</div><div class="entry-item-val">${r.generalSold||0}枚</div></div>
+        <div class="entry-item"><div class="entry-item-label">協賛配布</div><div class="entry-item-val">${r.sponsor}枚</div></div>
+        <div class="entry-item"><div class="entry-item-label">協賛実販売</div><div class="entry-item-val">${r.sponsorSold||0}枚</div></div>
+      </div>
+      <div class="entry-amount">チケット代: ${(Number(r.general||0)*2000).toLocaleString()}円</div>
+      ${r.note ? `<div style="font-size:12px;color:#8e8e93;margin-top:4px">📝 ${esc(r.note)}</div>` : ''}
+      <div class="entry-footer">
+        ${paid}
+        <div class="entry-actions">
+          <button class="btn-edit" onclick="openForm(${i})">編集</button>
+          <button class="btn-del" onclick="del(${i})">削除</button>
+        </div>
+      </div>`;
+    list.appendChild(div);
+  });
+
+  const general = data.reduce((a,r)=>a+Number(r.general||0),0);
+  const generalSold = data.reduce((a,r)=>a+Number(r.generalSold||0),0);
+  const sponsor = data.reduce((a,r)=>a+Number(r.sponsor||0),0);
+  const sponsorSold = data.reduce((a,r)=>a+Number(r.sponsorSold||0),0);
+  const rev = general * 2000;
+  const paid = data.filter(r=>r.date).reduce((a,r)=>a+Number(r.general||0)*2000,0);
+  const unpaid = data.filter(r=>!r.date).length;
+  document.getElementById('s-general').textContent = general+'枚';
+  document.getElementById('s-general-sold').textContent = generalSold+'枚';
+  document.getElementById('s-sponsor').textContent = sponsor+'枚';
+  document.getElementById('s-sponsor-sold').textContent = sponsorSold+'枚';
+  document.getElementById('s-rev').textContent = rev.toLocaleString()+'円';
+  document.getElementById('s-paid').textContent = paid.toLocaleString()+'円';
+  document.getElementById('s-unpaid').textContent = unpaid+'件';
+}
+
+render();
+</script>
+</body>
+</html>
